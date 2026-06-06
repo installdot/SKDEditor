@@ -37,6 +37,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.chichar.skdeditor.CrashHandler;
+import com.chichar.skdeditor.Const;
 import com.chichar.skdeditor.R;
 import com.chichar.skdeditor.fragments.SettingsFragment;
 import com.chichar.skdeditor.fragments.SpooferFragment;
@@ -82,6 +83,8 @@ public class MenuActivity extends AppCompatActivity {
 			}
 		}
 		menuContext = new WeakReference<>(this);
+		// load package preference
+		Const.load(this);
 		Handler handler = new Handler(Looper.myLooper());
 		try {
 			PussyShell.init(() -> handler.post(() ->

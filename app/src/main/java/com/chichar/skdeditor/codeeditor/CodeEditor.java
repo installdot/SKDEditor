@@ -1,124 +1,137 @@
 package com.chichar.skdeditor.codeeditor;
 
 import android.content.Context;
+import android.text.Editable;
+import android.text.Spannable;
+import android.text.TextWatcher;
+import android.text.style.BackgroundColorSpan;
 import android.util.AttributeSet;
-import android.widget.ListView;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import com.chichar.skdeditor.R;
 
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class CodeEditor extends ListView {
+public class CodeEditor extends FrameLayout {
 
-    private CodeEditorAdapter codeEditorAdapter;
+    private RememberCursorEditText editText;
+    private TextView lineNumbers;
 
     private int currentMatchedIndex = -1;
-
-    private final ArrayList<Integer> results = new ArrayList<>();
+    private final ArrayList<Integer[]> results = new ArrayList<>(); // start,end pairs
+    private Pattern lastPattern = null;
 
     public CodeEditor(Context context) {
         super(context);
+        init(context);
     }
 
     public CodeEditor(Context context, AttributeSet attrs) {
         super(context, attrs);
+        init(context);
     }
 
     public CodeEditor(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        init(context);
     }
 
-    public CodeEditor(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        super(context, attrs, defStyleAttr, defStyleRes);
+    private void init(Context context) {
+        LayoutInflater.from(context).inflate(R.layout.view_code_editor, this, true);
+        editText = findViewById(R.id.editorText);
+        lineNumbers = findViewById(R.id.lineNumbers);
+
+        editText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateLineNumbers();
+                // if text changed, re-run last pattern to keep highlights in sync
+                if (lastPattern != null) {
+                    findMatches(lastPattern);
+                }
+            }
+        });
     }
 
     public String getText() {
-        if (codeEditorAdapter == null) {
-            return "";
-        }
-        return codeEditorAdapter.getText();
+        if (editText == null) return "";
+        return editText.getText().toString();
     }
 
     public void setText(String text) {
-        String[] strings = text.split("\n");
-        if (codeEditorAdapter == null) {
-            codeEditorAdapter = new CodeEditorAdapter(getContext(), strings);
-            setAdapter(codeEditorAdapter);
-            return;
+        if (editText == null) return;
+        editText.setText(text);
+        updateLineNumbers();
+        clearMatches();
+    }
+
+    private void updateLineNumbers() {
+        if (editText == null || lineNumbers == null) return;
+        String txt = editText.getText().toString();
+        // preserve trailing newline count
+        int lines = 1;
+        if (!txt.isEmpty()) {
+            String[] arr = txt.split("\\n", -1);
+            lines = arr.length;
         }
-        codeEditorAdapter.setText(strings);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i <= lines; i++) {
+            sb.append(i);
+            if (i != lines) sb.append('\n');
+        }
+        lineNumbers.setText(sb.toString());
     }
 
     public ArrayList<Integer> findMatches(Pattern pattern) {
         results.clear();
-        if (pattern.toString().isEmpty() || codeEditorAdapter == null) return results;
+        if (pattern == null) return new ArrayList<>();
+        String text = getText();
+        if (text.isEmpty()) return new ArrayList<>();
+        lastPattern = pattern;
 
-        Matcher matcher = pattern.matcher(codeEditorAdapter.getText());
-        ArrayList<Integer[]> matchedIndexes = new ArrayList<>();
-        while (matcher.find()) matchedIndexes.add(new Integer[]{matcher.start(), matcher.end()});
-        if (matchedIndexes.isEmpty()) {
-            findNextMatch();
+        Matcher matcher = pattern.matcher(text);
+        Spannable spannable = editText.getText();
+        // clear existing highlight spans
+        BackgroundColorSpan[] spans = spannable.getSpans(0, spannable.length(), BackgroundColorSpan.class);
+        for (BackgroundColorSpan span : spans) {
+            spannable.removeSpan(span);
         }
-        String[] textArr = codeEditorAdapter.getTextArray();
 
-        int globalIndex = 0;
-        int resultIndex = 0;
-        ArrayList<Integer[]> highlight = new ArrayList<>();
-        if (matchedIndexes.isEmpty()) {
-            return results;
-        }
-        for (int i = 0; i < textArr.length; i++) { //index, start, end
-            for (int localIndex = 0; localIndex < textArr[i].length(); localIndex++) {
-
-                if (matchedIndexes.get(resultIndex)[1] == globalIndex) {
-                    if (highlight.size() == 0) {
-                        highlight.add(new Integer[]{i, 0, localIndex});
-                    }
-                    Integer[] currHighlight = highlight.get(highlight.size() - 1);
-                    if (currHighlight[1] == null) {
-                        currHighlight[1] = 0;
-                    }
-                    if (localIndex > currHighlight[1] && currHighlight[0] == i) {
-                        currHighlight[2] = localIndex;
-                    }
-                    if (currHighlight[0] != i) {
-                        highlight.add(currHighlight);
-                        for (int skippedIndex = currHighlight[0] + 1; skippedIndex < i; skippedIndex++) {
-                            highlight.add(new Integer[]{skippedIndex, 0, textArr[skippedIndex].length()});
-                        }
-                        highlight.add(new Integer[]{i, 0, localIndex});
-                    }
-                    else {
-                        highlight.remove(highlight.size() - 1);
-                        highlight.add(currHighlight);
-                    }
-                    resultIndex++;
-                    if (resultIndex == matchedIndexes.size()) {
-                        break;
-                    }
-                }
-                if (matchedIndexes.get(resultIndex)[0] == globalIndex) {
-                    highlight.add(new Integer[]{i, localIndex, textArr[i].length()});
-                    Integer[] currHighlight = highlight.get(highlight.size() - 1);
-                    if (currHighlight[0] == null) {
-                        currHighlight[0] = textArr[i].length() - 1;
-                    }
-                    currHighlight[1] = localIndex;
-                    highlight.remove(highlight.size() - 1);
-                    highlight.add(currHighlight);
-                    results.add(i);
-                }
-                globalIndex++;
-            }
-            globalIndex++;
-            if (resultIndex == matchedIndexes.size()) {
-                break;
+        ArrayList<Integer> ret = new ArrayList<>();
+        while (matcher.find()) {
+            int start = matcher.start();
+            int end = matcher.end();
+            results.add(new Integer[]{start, end});
+            ret.add(start);
+            try {
+                spannable.setSpan(new BackgroundColorSpan(0xFFBB86FC), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } catch (Exception ignored) {
             }
         }
-        codeEditorAdapter.setHighlight(highlight);
+
+        if (results.isEmpty()) {
+            // leave lastPattern set but show nothing
+            return ret;
+        }
+        currentMatchedIndex = -1;
         findNextMatch();
-        return results;
+        return ret;
     }
 
     public void findNextMatch() {
@@ -134,8 +147,20 @@ public class CodeEditor extends ListView {
             return;
         }
 
-        Integer currentMatch = results.get(currentMatchedIndex);
-        super.setSelection(currentMatch);
+        Integer[] range = results.get(currentMatchedIndex);
+        if (range == null) return;
+        int start = range[0];
+        int end = range[1];
+        try {
+            editText.requestFocus();
+            editText.post(() -> {
+                try {
+                    editText.setSelection(start, end);
+                } catch (Exception ignored) {
+                }
+            });
+        } catch (Exception ignored) {
+        }
     }
 
     public void findPrevMatch() {
@@ -148,26 +173,53 @@ public class CodeEditor extends ListView {
             Toast.makeText(getContext(), "Reached start of the document", Toast.LENGTH_SHORT).show();
             currentMatchedIndex = results.size() - 1;
         }
-        Integer currentMatch = results.get(currentMatchedIndex);
-        super.setSelection(currentMatch);
+        Integer[] range = results.get(currentMatchedIndex);
+        if (range == null) return;
+        int start = range[0];
+        int end = range[1];
+        try {
+            editText.requestFocus();
+            editText.post(() -> {
+                try {
+                    editText.setSelection(start, end);
+                } catch (Exception ignored) {
+                }
+            });
+        } catch (Exception ignored) {
+        }
     }
 
     public void clearMatches() {
         currentMatchedIndex = -1;
         results.clear();
-        codeEditorAdapter.clearHighlight();
+        Spannable spannable = editText.getText();
+        BackgroundColorSpan[] spans = spannable.getSpans(0, spannable.length(), BackgroundColorSpan.class);
+        for (BackgroundColorSpan span : spans) {
+            spannable.removeSpan(span);
+        }
     }
 
     public boolean replaceAllMatches(Pattern pattern, String replacement) {
-        return codeEditorAdapter.replaceAll(pattern, replacement);
+        try {
+            String txt = getText();
+            Matcher matcher = pattern.matcher(txt);
+            if (!matcher.find()) return false;
+            String replaced = matcher.replaceAll(replacement);
+            setText(replaced);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public void removeMatch(Integer index) {
-        for (int i = 0; i < results.size(); i++) {
-            if (results.get(i).equals(index)) {
-                results.remove(i);
-                break;
-            }
-        }
+        // Re-run last pattern to refresh highlights after edits
+        if (lastPattern != null) findMatches(lastPattern);
+    }
+
+    @Override
+    public boolean requestFocus(int direction, View previouslyFocusedRect) {
+        if (editText != null) return editText.requestFocus(direction, previouslyFocusedRect);
+        return super.requestFocus(direction, previouslyFocusedRect);
     }
 }

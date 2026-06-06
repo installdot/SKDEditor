@@ -26,6 +26,7 @@ import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 
 import com.chichar.skdeditor.R;
+import com.chichar.skdeditor.Const;
 import com.rosstonovsky.pussyBox.PussyShell;
 import com.rosstonovsky.pussyBox.PussyUser;
 
@@ -174,6 +175,21 @@ public class SettingsFragment extends Fragment {
 			return view;
 		}
 		customToyboxCmdText.setTextColor(getResources().getColor(R.color.gray));
+
+		// Package VN toggle
+		SwitchCompat pkgVnSwitch = view.findViewById(R.id.pkgVnSwitch);
+		String currPkg = prefs.getString("pkg", "com.ChillyRoom.DungeonShooter");
+		boolean isVn = currPkg.endsWith(".vn");
+		pkgVnSwitch.setChecked(isVn);
+		pkgVnSwitch.setOnClickListener(v -> {
+			String newPkg = pkgVnSwitch.isChecked() ? "com.ChillyRoom.DungeonShooter.vn" : "com.ChillyRoom.DungeonShooter";
+			SharedPreferences.Editor editor = prefs.edit();
+			editor.putString("pkg", newPkg);
+			editor.apply();
+			// update runtime Const
+			Const.save(requireContext(), newPkg);
+			Toast.makeText(requireContext(), "Package set to " + (pkgVnSwitch.isChecked() ? "VN" : "Global"), Toast.LENGTH_SHORT).show();
+		});
 		return view;
 	}
 
