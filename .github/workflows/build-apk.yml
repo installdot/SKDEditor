@@ -46,14 +46,14 @@ jobs:
           echo "84831b9409646a918e30573bab4c9c91346d8ab9" > $ANDROID_SDK_ROOT/licenses/android-sdk-preview-license || true
         shell: bash
 
-      - name: Install Android SDK packages (accept prompts)
-        run: |
-          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-        shell: bash
-
       - name: Accept all Android SDK licenses
         run: |
           yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
+        shell: bash
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --sdk_root=$ANDROID_SDK_ROOT --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
         shell: bash
 
       - name: Make gradlew executable
