@@ -51,6 +51,10 @@ jobs:
           sdkmanager --sdk_root=$ANDROID_SDK_ROOT --install "platform-tools" "platforms;android-31" "build-tools;31.0.0"
         shell: bash
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+        shell: bash
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug --no-daemon
 
