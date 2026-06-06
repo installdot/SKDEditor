@@ -6,6 +6,7 @@ import android.text.Spannable;
 import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
 import android.util.AttributeSet;
+import android.graphics.Rect;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -218,7 +219,7 @@ public class CodeEditor extends FrameLayout {
     }
 
     @Override
-    public boolean requestFocus(int direction, View previouslyFocusedRect) {
+    public boolean requestFocus(int direction, Rect previouslyFocusedRect) {
         if (editText != null) return editText.requestFocus(direction, previouslyFocusedRect);
         return super.requestFocus(direction, previouslyFocusedRect);
     }
