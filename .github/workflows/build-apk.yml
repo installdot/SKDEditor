@@ -48,7 +48,9 @@ jobs:
 
       - name: Accept all Android SDK licenses
         run: |
-          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
+          # avoid exit on SIGPIPE from 'yes' and suppress noisy output
+          set +o pipefail || true
+          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses >/dev/null 2>&1 || true
         shell: bash
 
       - name: Install Android SDK packages
